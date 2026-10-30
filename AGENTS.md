@@ -9,6 +9,7 @@ Operational rules and CLI conventions for the `agy-box` repository.
 - **No AI bloat**: Skip filler words; keep responses short, direct, and DRY.
 - **Format**: Bullet points preferred over long explanations. Group or prefix by repository (`agy-box: file`).
 - **Documentation**: Update [`README.md`](README.md) whenever CLI flags, profiles, or workflows change.
+- **Single source of truth**: Real documentation (architecture, setup, CLI usage) belongs in `README.md` or `docs/` for humans. `AGENTS.md` is strictly for agent rules, CLI constraints, and allowlists. Never duplicate facts across them.
 
 ---
 
