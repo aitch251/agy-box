@@ -1,0 +1,38 @@
+{
+  "workbench.colorTheme": "Dark+",
+  "workbench.startupEditor": "none",
+  "telemetry.telemetryLevel": "off",
+  "redhat.telemetry.enabled": false,
+  "editor.tabSize": 2,
+  "editor.wordWrap": "on",
+  "files.trimTrailingWhitespace": true,
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.git": true
+  },
+  "explorer.confirmDragAndDrop": false,
+  "explorer.confirmDelete": false,
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.suggestSmartCommit": false,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.enableMultiLinePasteWarning": false,
+  "terminal.integrated.initialHint": false,
+  "terminal.integrated.macOptionIsMeta": true,
+  "terminal.integrated.profiles.osx": {
+    "agy-box (Sandboxed AI)": {
+      "path": "zsh",
+      "args": ["-l", "-c", "agy-box"],
+      "icon": "shield"
+    },
+    "agy-box wp (WordPress)": {
+      "path": "zsh",
+      "args": ["-l", "-c", "agy-box wp"],
+      "icon": "globe"
+    },
+    "zsh": {
+      "path": "zsh",
+      "args": ["-l"]
+    }
+  }
+}

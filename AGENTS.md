@@ -24,6 +24,8 @@ Operational rules and CLI conventions for the `agy-box` repository.
 
 ## Repository Layout
 
-- [`agy-box`](agy-box): Executable zsh launcher (`install`, `status`, `wp`, default repo sandbox).
+- [`agy-box`](agy-box): Executable zsh launcher (`install`, `codium`, `status`, `wp`, default repo sandbox).
 - [`profiles/sandbox-strict.json`](profiles/sandbox-strict.json): Canonical `Deny > Ask > Allow` security policy.
 - [`prompts/wp-creator.md`](prompts/wp-creator.md): System prompt template for WordPress essay & theme collaboration.
+- [`skills/`](skills/): Portable skills bundle (`kanban`, `work`, `security-review`, `streamline-agy`).
+- [`codium/`](codium/): Barebones VSCodium configuration (`settings.json`, `keybindings.json`).
