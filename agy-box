@@ -1,0 +1,180 @@
+#!/usr/bin/env zsh
+# ==============================================================================
+# agy-box - Sandboxed Antigravity Launcher (All Repositories + WordPress Helper)
+# ==============================================================================
+
+set -euo pipefail
+
+SOURCE="${0:A}"
+BOX_DIR="${SOURCE:h}"
+PROFILE_JSON="$BOX_DIR/profiles/sandbox-strict.json"
+WP_PROMPT_TPL="$BOX_DIR/prompts/wp-creator.md"
+AGY_SETTINGS="${AGY_SETTINGS:-$HOME/.gemini/antigravity-cli/settings.json}"
+LOCAL_GIT_SETTINGS="${LOCAL_GIT_SETTINGS:-$HOME/git/local/agy/settings.json}"
+DEFAULT_WP_DIR="${WP_REPO_DIR:-$HOME/git/wordpress}"
+DEFAULT_SITE="${WP_DEFAULT_SITE:-example.com}"
+DEFAULT_PORT="${WP_DEFAULT_PORT:-8080}"
+
+info() { printf "[agy-box] %s\n" "$*"; }
+err()  { printf "[agy-box] ERROR: %s\n" "$*" >&2; }
+
+usage() {
+	cat <<EOF
+agy-box — Sandboxed Antigravity CLI launcher for any repository
+
+USAGE:
+  agy-box [path] [agy-args...]  Run sandboxed agy (--sandbox --mode auto) in current/target repo
+  agy-box wp <site> [port]      Run WordPress preview + sandboxed agy (default port: ${DEFAULT_PORT})
+  agy-box install               Symlink binary and merge deny/ask/allow rules into settings.json
+  agy-box status                Print active sandbox & permission counts
+  agy-box help                  Print usage
+
+EXAMPLES:
+  cd ~/git/action-data && agy-box
+  agy-box ~/git/hack-server
+  agy-box wp example.com
+EOF
+}
+
+require_agy() {
+	if ! command -v agy >/dev/null 2>&1; then
+		err "'agy' not found in PATH."
+		exit 1
+	fi
+}
+
+cmd_install() {
+	local bin_dir="$HOME/.local/bin"
+	mkdir -p "$bin_dir"
+	chmod +x "$BOX_DIR/agy-box"
+	ln -sf "$BOX_DIR/agy-box" "$bin_dir/agy-box"
+	info "Symlinked: $bin_dir/agy-box -> $BOX_DIR/agy-box"
+
+	python3 - "$PROFILE_JSON" "$AGY_SETTINGS" "$LOCAL_GIT_SETTINGS" <<'PY'
+import json, os, sys
+
+profile_path, runtime_path, git_path = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(profile_path, encoding="utf-8") as f:
+    profile = json.load(f)
+
+def merge_into(target_path):
+    if os.path.exists(target_path):
+        with open(target_path, encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        data = {}
+
+    perms = data.setdefault("permissions", {})
+    for tier in ("deny", "ask", "allow"):
+        existing = perms.get(tier, [])
+        for entry in profile.get("permissions", {}).get(tier, []):
+            if entry not in existing:
+                existing.append(entry)
+        perms[tier] = sorted(existing)
+
+    text = json.dumps(data, indent=2, ensure_ascii=False)
+    text = text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    tmp = f"{target_path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text + "\n")
+    os.replace(tmp, target_path)
+
+merge_into(runtime_path)
+print(f"[agy-box] Updated: {runtime_path}")
+if os.path.exists(os.path.dirname(git_path)):
+    merge_into(git_path)
+    print(f"[agy-box] Updated: {git_path}")
+PY
+}
+
+cmd_status() {
+	info "binary:  $(command -v agy || echo 'MISSING')"
+	info "script:  $BOX_DIR/agy-box"
+	info "profile: $PROFILE_JSON"
+
+	if [[ -f "$AGY_SETTINGS" ]]; then
+		python3 - "$AGY_SETTINGS" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    d = json.load(f)
+p = d.get("permissions", {})
+print(f"[agy-box] settings: {sys.argv[1]}")
+print(f"  deny:  {len(p.get('deny', []))} rules")
+print(f"  ask:   {len(p.get('ask', []))} rules")
+print(f"  allow: {len(p.get('allow', []))} rules")
+PY
+	else
+		err "Settings missing at $AGY_SETTINGS (run 'agy-box install')"
+	fi
+}
+
+cmd_wp() {
+	require_agy
+	local site="${1:-$DEFAULT_SITE}"
+	local port="${2:-$DEFAULT_PORT}"
+	local wp_dir="$DEFAULT_WP_DIR"
+
+	if [[ ! -d "$wp_dir" ]]; then
+		err "Missing repo: $wp_dir (set WP_REPO_DIR to override)"
+		exit 1
+	fi
+
+	cd "$wp_dir"
+	info "repo:    $wp_dir"
+	info "site:    $site"
+	info "posts:   sites/$site/content/posts/"
+	info "pages:   sites/$site/content/pages/"
+	info "themes:  sites/$site/wp-content/themes/"
+
+	if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+		if make dev site="$site" port="$port"; then
+			info "preview: http://localhost:${port}"
+			command -v open >/dev/null 2>&1 && open "http://localhost:${port}" >/dev/null 2>&1 || true
+		else
+			info "preview: failed to start container; continuing offline"
+		fi
+	else
+		info "preview: docker not running (run 'make dev site=$site' once Docker is started)"
+	fi
+
+	local init_prompt=""
+	if [[ -f "$WP_PROMPT_TPL" ]]; then
+		init_prompt="$(sed -e "s/{{SITE}}/$site/g" -e "s/{{PORT}}/$port/g" "$WP_PROMPT_TPL")"
+	fi
+
+	if [[ -n "$init_prompt" ]]; then
+		exec agy --sandbox --mode auto --settings "$PROFILE_JSON" -i "$init_prompt
+
+Output a 3-bullet status summary (site, paths, preview URL) and wait for instructions."
+	else
+		exec agy --sandbox --mode auto --settings "$PROFILE_JSON"
+	fi
+}
+
+cmd_default() {
+	require_agy
+	if [[ $# -gt 0 && -d "$1" ]]; then
+		cd "$1"
+		shift
+	fi
+	local git_root
+	git_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+	cd "$git_root"
+	info "workspace: $git_root"
+	info "mode:      sandboxed (--sandbox --mode auto)"
+	exec agy --sandbox --mode auto --settings "$PROFILE_JSON" "$@"
+}
+
+main() {
+	local subcmd="${1:-}"
+	case "$subcmd" in
+		install)        shift; cmd_install "$@" ;;
+		status)         shift; cmd_status "$@" ;;
+		wp|wordpress)   shift; cmd_wp "$@" ;;
+		help|-h|--help) usage ;;
+		*)              cmd_default "$@" ;;
+	esac
+}
+
+main "$@"
