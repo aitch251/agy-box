@@ -51,7 +51,7 @@ agy-box codium
 
 | Command | Action |
 | :--- | :--- |
-| `agy-box [path]` | Run `agy --sandbox --mode auto` locked to current or target git repo |
+| `agy-box [path]` | Run `agy --sandbox --mode accept-edits` locked to current or target git repo |
 | `agy-box wp <site> [port]` | Start Docker preview + sandboxed `agy` in `~/git/wordpress` (default port: `8080`) |
 | `agy-box install [--codium]` | Install symlink, permission profile, skills, and optionally VSCodium config |
 | `agy-box codium` | Install VSCodium (if missing) and apply [`codium/`](codium/) settings/keybindings |
@@ -78,7 +78,7 @@ Installed globally into `~/.gemini/config/skills/` and available in every reposi
 cd ~/git/<repo> && agy-box
 # or: agy-box ~/git/<repo>
 ```
-- Resolves git root automatically and launches `agy --sandbox --mode auto`.
+- Resolves git root automatically and launches `agy --sandbox --mode accept-edits`.
 - Zero prompts for local edits, tests, builds, and commits (`pytest`, `ruff`, `npm test`, `npm run build`, `go test`, `cargo test`, `make`, `git commit`).
 - Blocks writes outside the active repo and blocks sensitive files (`.env`, `~/.ssh`, `~/.aws`, `*.pem`).
 

@@ -30,7 +30,7 @@ usage() {
 agy-box — Sandboxed Antigravity CLI launcher, skill bundle & VSCodium bootstrapper
 
 USAGE:
-  agy-box [path] [agy-args...]  Run sandboxed agy (--sandbox --mode auto) in current/target repo
+  agy-box [path] [agy-args...]  Run sandboxed agy (--sandbox --mode accept-edits) in current/target repo
   agy-box wp <site> [port]      Run WordPress preview + sandboxed agy (default port: ${DEFAULT_PORT})
   agy-box install [--codium]    Install agy-box, security rules, and bundled skills (+ VSCodium if --codium)
   agy-box codium                Install/configure barebones VSCodium for agy-box
@@ -194,9 +194,12 @@ def merge_into(target_path):
         data = {}
 
     perms = data.setdefault("permissions", {})
+    wildcard_only_in_sandbox = {"command(*)", "read_file(*)", "write_file(*)"}
     for tier in ("deny", "ask", "allow"):
         existing = perms.get(tier, [])
         for entry in profile.get("permissions", {}).get(tier, []):
+            if tier == "allow" and entry in wildcard_only_in_sandbox:
+                continue
             if entry not in existing:
                 existing.append(entry)
         if tier == "allow":
@@ -282,11 +285,11 @@ cmd_wp() {
 	fi
 
 	if [[ -n "$init_prompt" ]]; then
-		exec agy --sandbox --mode auto --settings "$PROFILE_JSON" -i "$init_prompt
+		exec agy --sandbox --mode accept-edits --settings "$PROFILE_JSON" -i "$init_prompt
 
 Output a 3-bullet status summary (site, paths, preview URL) and wait for instructions."
 	else
-		exec agy --sandbox --mode auto --settings "$PROFILE_JSON"
+		exec agy --sandbox --mode accept-edits --settings "$PROFILE_JSON"
 	fi
 }
 
@@ -300,8 +303,8 @@ cmd_default() {
 	git_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 	cd "$git_root"
 	info "workspace: $git_root"
-	info "mode:      sandboxed (--sandbox --mode auto)"
-	exec agy --sandbox --mode auto --settings "$PROFILE_JSON" "$@"
+	info "mode:      sandboxed (--sandbox --mode accept-edits)"
+	exec agy --sandbox --mode accept-edits --settings "$PROFILE_JSON" "$@"
 }
 
 main() {

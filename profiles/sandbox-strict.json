@@ -1,6 +1,6 @@
 {
   "enableTerminalSandbox": true,
-  "agentMode": "auto",
+  "agentMode": "accept-edits",
   "permissions": {
     "deny": [
       "command(./wpctl decommission*)",
@@ -64,6 +64,9 @@
       "command(wpctl update-core*)"
     ],
     "allow": [
+      "command(*)",
+      "read_file(*)",
+      "write_file(*)",
       "command(./wpctl backup*)",
       "command(./wpctl fix-503*)",
       "command(./wpctl health*)",
