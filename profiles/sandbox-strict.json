@@ -44,7 +44,6 @@
       "command(cdk destroy*)",
       "command(gh pr merge*)",
       "command(gh repo delete*)",
-      "command(git push*)",
       "command(ssh *)",
       "command(terraform apply*)",
       "command(terraform destroy*)",
@@ -153,7 +152,11 @@
       "command(wpctl pull*)",
       "command(wpctl state*)",
       "command(wpctl test-auth*)",
-      "command(wpctl verify-core*)"
+      "command(wpctl verify-core*)",
+      "command(git push*)",
+      "command(git branch*)",
+      "command(git merge*)",
+      "command(gh pr create*)"
     ]
   }
 }
