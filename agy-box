@@ -22,6 +22,26 @@ DEFAULT_WP_DIR="${WP_REPO_DIR:-$HOME/git/wordpress}"
 DEFAULT_SITE="${WP_DEFAULT_SITE:-example.com}"
 DEFAULT_PORT="${WP_DEFAULT_PORT:-8080}"
 
+# Render profile placeholders ({{HOME}}, {{ROOT}}) into absolute paths.
+# The sandbox rejects globs and relative paths in deny rules.
+# Usage: render_profile <root> [extra-wp-config-path...] -> prints temp file path
+render_profile() {
+	local root="$1"; shift
+	local out
+	out="$(mktemp -t agy-box-profile).json"
+	python3 - "$PROFILE_JSON" "$out" "$HOME" "$root" "$@" <<'PY'
+import json, sys
+src, dst, home, root, *extra = sys.argv[1:]
+d = json.load(open(src, encoding="utf-8"))
+deny = d["permissions"]["deny"]
+for p in extra:
+    deny += [f"read_file({p})", f"write_file({p})"]
+d["permissions"]["deny"] = [e.replace("{{HOME}}", home).replace("{{ROOT}}", root) for e in deny]
+json.dump(d, open(dst, "w", encoding="utf-8"), indent=2)
+PY
+	print -r -- "$out"
+}
+
 info() { printf "[agy-box] %s\n" "$*"; }
 err()  { printf "[agy-box] ERROR: %s\n" "$*" >&2; }
 
@@ -195,11 +215,15 @@ def merge_into(target_path):
 
     perms = data.setdefault("permissions", {})
     wildcard_only_in_sandbox = {"command(*)", "read_file(*)", "write_file(*)"}
+    home = os.path.expanduser("~")
     for tier in ("deny", "ask", "allow"):
         existing = perms.get(tier, [])
         for entry in profile.get("permissions", {}).get(tier, []):
             if tier == "allow" and entry in wildcard_only_in_sandbox:
                 continue
+            if "{{ROOT}}" in entry:
+                continue  # per-repo paths are rendered at launch time
+            entry = entry.replace("{{HOME}}", home)
             if entry not in existing:
                 existing.append(entry)
         if tier == "allow":
@@ -284,12 +308,15 @@ cmd_wp() {
 		init_prompt="$(sed -e "s/{{SITE}}/$site/g" -e "s/{{PORT}}/$port/g" "$WP_PROMPT_TPL")"
 	fi
 
+	local rendered
+	rendered="$(render_profile "$wp_dir" "$wp_dir/sites/$site/wp-config.php")"
+
 	if [[ -n "$init_prompt" ]]; then
-		exec agy --sandbox --mode accept-edits --settings "$PROFILE_JSON" -i "$init_prompt
+		exec agy --sandbox --mode accept-edits --settings "$rendered" -i "$init_prompt
 
 Output a 3-bullet status summary (site, paths, preview URL) and wait for instructions."
 	else
-		exec agy --sandbox --mode accept-edits --settings "$PROFILE_JSON"
+		exec agy --sandbox --mode accept-edits --settings "$rendered"
 	fi
 }
 
@@ -304,7 +331,7 @@ cmd_default() {
 	cd "$git_root"
 	info "workspace: $git_root"
 	info "mode:      sandboxed (--sandbox --mode accept-edits)"
-	exec agy --sandbox --mode accept-edits --settings "$PROFILE_JSON" "$@"
+	exec agy --sandbox --mode accept-edits --settings "$(render_profile "$git_root")" "$@"
 }
 
 main() {
